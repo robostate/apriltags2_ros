@@ -12,12 +12,19 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   cv_bridge
   tf
+  tf2_ros
   cmake_modules
   nodelet
   pluginlib
+  robostate_comm_msgs
 )
 
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
+if(NOT Eigen_FOUND)
+  set(Eigen_INCLUDE_DIRS "${EIGEN3_INCLUDE_DIR}")
+endif()
+include_directories(${Eigen_INCLUDE_DIR})
+
 find_package(OpenCV REQUIRED)
 
 # Set the build type.  Options are:
@@ -31,7 +38,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 11)
 
 add_definitions (-Wall -O3)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -funsafe-loop-optimizations -fsee -funroll-loops -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-signed-zeros ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -funsafe-loop-optimizations -Wno-sign-compare -fsee -funroll-loops -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-signed-zeros ")
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES x86_64 OR x86_32)
   message("enabling msse2 for x86_64 or x86_32 architecture")
@@ -41,6 +48,11 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES arm)
   message("enabling -mfpu=neon -mfloat-abi=softfp for ARM architecture")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv7-a -mcpu=cortex-a9 -mfpu=neon -mtune=cortex-a9 -mvectorize-with-neon-quad -ffast-math ")
 endif(${CMAKE_SYSTEM_PROCESSOR} MATCHES arm)
+
+if(JETSON_CROSS_COMPILE)
+     set(C11_COMP_FLAGS "-W -pipe -Ofast -mcpu=cortex-a57 -std=c++11")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C11_COMP_FLAGS}")
+endif()
 
 add_message_files(
   FILES
@@ -62,7 +74,7 @@ generate_messages(
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS apriltags2 geometry_msgs image_transport roscpp sensor_msgs std_msgs message_runtime cv_bridge tf nodelet pluginlib
+  CATKIN_DEPENDS apriltags2 geometry_msgs image_transport roscpp sensor_msgs std_msgs message_runtime cv_bridge tf nodelet pluginlib robostate_comm_msgs
   DEPENDS Eigen OpenCV
 )
 
@@ -77,7 +89,7 @@ include_directories(include
 )
 
 add_library(common src/common_functions.cpp)
-add_dependencies(common ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(common ${PROJECT_NAME}_generate_messages_cpp robostate_comm_msgs_generate_messages_cpp)
 target_link_libraries(common
   ${catkin_LIBRARIES}
   ${Eigen_LIBRARIES}

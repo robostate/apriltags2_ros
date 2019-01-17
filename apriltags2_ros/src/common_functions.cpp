@@ -585,9 +585,9 @@ geometry_msgs::PoseWithCovarianceStamped TagDetector::makeTagPose(
   geometry_msgs::PoseWithCovarianceStamped tag_pose;
   tag_pose.header = header;
   //===== Position and orientation
-  tag_pose.pose.pose.position.x    = vec_tf_inv.x();//transform(0, 3);
-  tag_pose.pose.pose.position.y    = vec_tf_inv.y();//transform(1, 3);
-  tag_pose.pose.pose.position.z    = vec_tf_inv.z();//transform(2, 3);
+  tag_pose.pose.pose.position.x    = vec_tf_inv.x();// transform(0, 3);
+  tag_pose.pose.pose.position.y    = vec_tf_inv.y();// transform(1, 3);
+  tag_pose.pose.pose.position.z    = vec_tf_inv.z();// transform(2, 3);
   tag_pose.pose.pose.orientation.x = rot_quaternion_tf.x();//rot_quaternion.x();
   tag_pose.pose.pose.orientation.y = rot_quaternion_tf.y();//rot_quaternion.y();
   tag_pose.pose.pose.orientation.z = rot_quaternion_tf.z();//rot_quaternion.z();

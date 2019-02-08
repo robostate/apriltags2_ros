@@ -415,7 +415,7 @@ AprilTagDetectionArray TagDetector::detectTags (
   {
     for (unsigned int i=0; i<tag_detection_array.detections.size(); i++)
     {
-        if(!sent_ &&
+        if(!sent_ && // Workaround explanation: after reaching to enough distance (2.0), switch to the bundle from big_tag // TODO add big_tag to the bundle
             (
                (
                  fabs(tag_detection_array.detections[i].pose.pose.pose.position.z) > 2.0  &&

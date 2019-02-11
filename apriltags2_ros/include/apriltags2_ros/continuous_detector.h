@@ -77,6 +77,7 @@ class ContinuousDetector: public nodelet::Nodelet
   ros::Publisher tag_detections_publisher_;
   ros::Subscriber state_subs_;
   RoboState::States drone_state_;
+  bool wait_for_state_;
 };
 
 } // namespace apriltags2_ros

@@ -53,6 +53,9 @@ void ContinuousDetector::onInit ()
   it_ = std::shared_ptr<image_transport::ImageTransport>(
       new image_transport::ImageTransport(nh));
 
+  wait_for_state_ = getAprilTagOption<bool>(pnh,
+      "wait_for_state", true);
+
   state_subs_ = nh.subscribe("/State", 10, &ContinuousDetector::stateCb, this);
 
   camera_image_subscriber_ =
@@ -77,12 +80,13 @@ void ContinuousDetector::imageCallback (
     const sensor_msgs::CameraInfoConstPtr& camera_info)
 {
 
-
-  if(this->drone_state_ != RoboState::States::DOCKING)
+  if (wait_for_state_)
   {
-      return;
+      if(this->drone_state_ != RoboState::States::DOCKING)
+      {
+          return;
+      }
   }
-
 
   // Convert ROS's sensor_msgs::Image to cv_bridge::CvImagePtr in order to run
   // AprilTags 2 on the iamge

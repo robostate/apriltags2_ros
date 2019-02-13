@@ -409,13 +409,14 @@ AprilTagDetectionArray TagDetector::detectTags (
     }
   }
 
-  auto sent_ = false;
+  /** auto sent_ = false;*/
   // If set, publish the transform /tf topic
   if (publish_tf_)
   {
     for (unsigned int i=0; i<tag_detection_array.detections.size(); i++)
     {
-        if(!sent_ && // Workaround explanation: after reaching to enough distance (2.0), switch to the bundle from big_tag // TODO add big_tag to the bundle
+        /** Leaving this workaround here as commented */
+        /** if(!sent_ && // Workaround explanation: after reaching to enough distance (2.0), switch to the bundle from big_tag // TODO add big_tag to the bundle
             (
                (
                  fabs(tag_detection_array.detections[i].pose.pose.pose.position.z) > 2.0  &&
@@ -428,7 +429,7 @@ AprilTagDetectionArray TagDetector::detectTags (
                )
             )
           )
-        {
+        {*/
           geometry_msgs::PoseStamped pose;
           pose.pose = tag_detection_array.detections[i].pose.pose.pose;
           pose.header = tag_detection_array.detections[i].pose.header;
@@ -451,8 +452,8 @@ AprilTagDetectionArray TagDetector::detectTags (
                                                          camera_tf_frame_,
                                                          base_tf_frame_));
           }
-          sent_ = true;
-        }
+        /**  sent_ = true;
+        }*/
     }
   }
 

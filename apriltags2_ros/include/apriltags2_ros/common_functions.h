@@ -163,15 +163,19 @@ class TagDetector
   double cam_fy_;
   double cam_px_;
   double cam_py_;
-  double fcu_pos_x_;
-  double fcu_pos_y_;
-  double fcu_pos_z_;
-  double fcu_pos_roll_;
-  double fcu_pos_pitch_;
-  double fcu_pos_yaw_;
+  double robot_base_x_;
+  double robot_base_y_;
+  double robot_base_z_;
+  double robot_base_roll_;
+  double robot_base_pitch_;
+  double robot_base_yaw_;
   bool use_cam_info_topic_;
   bool get_yaw_from_tags_;
   bool cam_properties_set_;
+  bool invert_tf_;
+  bool static_orientation_;
+  bool send_tf_to_base_;
+  std::string base_tf_frame_;
 
   // Detections sorting
   static int idComparison(const void* first, const void* second);

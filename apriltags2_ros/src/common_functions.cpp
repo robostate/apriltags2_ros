@@ -43,6 +43,7 @@ namespace apriltags2_ros
 {
 
 TagDetector::TagDetector(ros::NodeHandle pnh) :
+    base_tf_frame_(getAprilTagOption<std::string>(pnh, "base_tf_frame", "base_vision")),
     family_(getAprilTagOption<std::string>(pnh, "tag_family", "tag36h11")),
     border_(getAprilTagOption<int>(pnh, "tag_border", 1)),
     threads_(getAprilTagOption<int>(pnh, "tag_threads", 4)),
@@ -56,29 +57,37 @@ TagDetector::TagDetector(ros::NodeHandle pnh) :
 {
   pnh.param<bool>("use_cam_info_topic", use_cam_info_topic_, false);
   pnh.param<bool>("get_yaw_from_tags", get_yaw_from_tags_, false);
+  pnh.param<bool>("use_static_orientation", static_orientation_, false);
+  pnh.param<bool>("inverted_tf", invert_tf_, false);
+  pnh.param<bool>("send_transform_to_base", send_tf_to_base_, false);
   pnh.param<double>("cam_fx", cam_fx_,0);
   pnh.param<double>("cam_fy", cam_fy_,0);
   pnh.param<double>("cam_px", cam_px_,0);
   pnh.param<double>("cam_py", cam_py_,0);
-  pnh.param<double>("fcu_pos_x", fcu_pos_x_,0);
-  pnh.param<double>("fcu_pos_y", fcu_pos_y_,0);
-  pnh.param<double>("fcu_pos_z", fcu_pos_z_,0);
-  pnh.param<double>("fcu_pos_roll",fcu_pos_roll_,0);
-  pnh.param<double>("fcu_pos_pitch",fcu_pos_pitch_,0);
-  pnh.param<double>("fcu_pos_yaw",fcu_pos_yaw_,0);
+  pnh.param<double>("robot_base_pos_x", robot_base_x_,0);
+  pnh.param<double>("robot_base_pos_y", robot_base_y_,0);
+  pnh.param<double>("robot_base_pos_z", robot_base_z_,0);
+  pnh.param<double>("robot_base_pos_roll",robot_base_roll_,0);
+  pnh.param<double>("robot_base_pos_pitch",robot_base_pitch_,0);
+  pnh.param<double>("robot_base_pos_yaw",robot_base_yaw_,0);
 
+  ROS_INFO("base_tf_frame: %s", base_tf_frame_.c_str());
+  ROS_INFO("get_yaw_from_tags: %d", get_yaw_from_tags_);
+  ROS_INFO("use_static_orientation: %d", static_orientation_);
+  ROS_INFO("inverted_tf: %d", invert_tf_);
+  ROS_INFO("send_transform_to_base: %d", send_tf_to_base_);
   ROS_INFO("using cam info topic: %d", use_cam_info_topic_);
   ROS_INFO("get yaw from tags: %d", get_yaw_from_tags_);
   ROS_INFO("cam_fx: %lf", cam_fx_);
   ROS_INFO("cam_fy: %lf", cam_fy_);
   ROS_INFO("cam_px: %lf", cam_px_);
   ROS_INFO("cam_py: %lf", cam_py_);
-  ROS_INFO("fcu_pos_x: %lf", fcu_pos_x_);
-  ROS_INFO("fcu_pos_y: %lf", fcu_pos_y_);
-  ROS_INFO("fcu_pos_z: %lf", fcu_pos_z_);
-  ROS_INFO("fcu_pos_roll: %lf",fcu_pos_roll_);
-  ROS_INFO("fcu_pos_pitch: %lf",fcu_pos_pitch_);
-  ROS_INFO("fcu_pos_yaw: %lf",fcu_pos_yaw_);
+  ROS_INFO("robot_base_pos_x: %lf", robot_base_x_);
+  ROS_INFO("robot_base_pos_y: %lf", robot_base_y_);
+  ROS_INFO("robot_base_pos_z: %lf", robot_base_z_);
+  ROS_INFO("robot_base_pos_roll: %lf",robot_base_roll_);
+  ROS_INFO("robot_base_pos_pitch: %lf",robot_base_pitch_);
+  ROS_INFO("robot_base_pos_yaw: %lf",robot_base_yaw_);
   cam_properties_set_ = false;
 
   // Parse standalone tag descriptions specified by user (stored on ROS
@@ -400,13 +409,14 @@ AprilTagDetectionArray TagDetector::detectTags (
     }
   }
 
-  auto sent_ = false;
+  /** auto sent_ = false;*/
   // If set, publish the transform /tf topic
   if (publish_tf_)
   {
     for (unsigned int i=0; i<tag_detection_array.detections.size(); i++)
     {
-        if(!sent_ &&
+        /** Leaving this workaround here as commented */
+        /** if(!sent_ && // Workaround explanation: after reaching to enough distance (2.0), switch to the bundle from big_tag // TODO add big_tag to the bundle
             (
                (
                  fabs(tag_detection_array.detections[i].pose.pose.pose.position.z) > 2.0  &&
@@ -419,7 +429,7 @@ AprilTagDetectionArray TagDetector::detectTags (
                )
             )
           )
-        {
+        {*/
           geometry_msgs::PoseStamped pose;
           pose.pose = tag_detection_array.detections[i].pose.pose.pose;
           pose.header = tag_detection_array.detections[i].pose.header;
@@ -429,17 +439,21 @@ AprilTagDetectionArray TagDetector::detectTags (
                                                      tag_transform.stamp_,
                                                      detection_names[i],
                                                      camera_tf_frame_));
-          tf::Transform fcu_transform;
-          fcu_transform.setOrigin(tf::Vector3(fcu_pos_x_, fcu_pos_y_,  fcu_pos_z_));
-          tf::Quaternion fcu_q_;
-          fcu_q_.setRPY(fcu_pos_roll_,fcu_pos_pitch_, fcu_pos_yaw_);
-          fcu_transform.setRotation(fcu_q_);
-          tf_pub_.sendTransform(tf::StampedTransform(fcu_transform,
-                                                     tag_transform.stamp_,
-                                                     camera_tf_frame_,
-                                                     "fcu_vision"));
-          sent_ = true;
-        }
+
+          if (send_tf_to_base_)
+          {
+              tf::Transform fcu_transform;
+              fcu_transform.setOrigin(tf::Vector3(robot_base_x_, robot_base_y_,  robot_base_z_));
+              tf::Quaternion fcu_q_;
+              fcu_q_.setRPY(robot_base_roll_,robot_base_pitch_, robot_base_yaw_);
+              fcu_transform.setRotation(fcu_q_);
+              tf_pub_.sendTransform(tf::StampedTransform(fcu_transform,
+                                                         tag_transform.stamp_,
+                                                         camera_tf_frame_,
+                                                         base_tf_frame_));
+          }
+        /**  sent_ = true;
+        }*/
     }
   }
 
@@ -563,35 +577,57 @@ geometry_msgs::PoseWithCovarianceStamped TagDetector::makeTagPose(
     const std_msgs::Header& header,
         bool standalone_tag)
 {
-  tf::Matrix3x3 rot_matrix;
-  if(get_yaw_from_tags_ && standalone_tag) // hardcoded for now... TODO: Fix this
+  geometry_msgs::PoseWithCovarianceStamped tag_pose;
+  tag_pose.header = header;
+
+  if (invert_tf_)
   {
+      tf::Matrix3x3 rot_matrix;
       tf::Quaternion quat(rot_quaternion.x(),rot_quaternion.y(),rot_quaternion.z(),rot_quaternion.w());
       tf::Matrix3x3 matrix(quat);
       double roll, pitch, yaw;
       matrix.getEulerYPR(yaw, pitch, roll);
-      //rt_m.setRPY(roll, pitch, yaw);
-      rot_matrix.setRPY(fcu_pos_roll_, fcu_pos_pitch_, yaw);
+
+      if (static_orientation_)
+      {
+          if(get_yaw_from_tags_ && standalone_tag) // && standalone_tag ... hardcoded for now... TODO: Fix this
+          {
+              rot_matrix.setRPY(robot_base_roll_, robot_base_pitch_, yaw);
+          }
+          else
+          {
+              rot_matrix.setRPY(robot_base_roll_, robot_base_pitch_, robot_base_yaw_);
+          }
+      }
+      else
+      {
+          rot_matrix.setRPY(roll, pitch, yaw);
+      }
+
+      tf::Vector3 vec_tf(transform(0, 3), transform(1, 3), transform(2, 3));
+      tf::Vector3 vec_tf_inv = rot_matrix*-vec_tf;
+      tf::Quaternion rot_quaternion_tf;
+      rot_matrix.getRotation(rot_quaternion_tf);
+
+      tag_pose.pose.pose.position.x    = vec_tf_inv.x();
+      tag_pose.pose.pose.position.y    = vec_tf_inv.y();
+      tag_pose.pose.pose.position.z    = vec_tf_inv.z();
+      tag_pose.pose.pose.orientation.x = rot_quaternion_tf.x();
+      tag_pose.pose.pose.orientation.y = rot_quaternion_tf.y();
+      tag_pose.pose.pose.orientation.z = rot_quaternion_tf.z();
+      tag_pose.pose.pose.orientation.w = rot_quaternion_tf.w();
   }
   else
   {
-      rot_matrix.setRPY(fcu_pos_roll_, fcu_pos_pitch_, fcu_pos_yaw_);
+      tag_pose.pose.pose.position.x    = transform(0, 3);
+      tag_pose.pose.pose.position.y    = transform(1, 3);
+      tag_pose.pose.pose.position.z    = transform(2, 3);
+      tag_pose.pose.pose.orientation.x = rot_quaternion.x();
+      tag_pose.pose.pose.orientation.y = rot_quaternion.y();
+      tag_pose.pose.pose.orientation.z = rot_quaternion.z();
+      tag_pose.pose.pose.orientation.w = rot_quaternion.w();
   }
-  tf::Vector3 vec_tf(transform(0, 3), transform(1, 3), transform(2, 3));
-  tf::Vector3 vec_tf_inv = rot_matrix*-vec_tf;
-  tf::Quaternion rot_quaternion_tf;
-  rot_matrix.getRotation(rot_quaternion_tf);
 
-  geometry_msgs::PoseWithCovarianceStamped tag_pose;
-  tag_pose.header = header;
-  //===== Position and orientation
-  tag_pose.pose.pose.position.x    = vec_tf_inv.x();//transform(0, 3);
-  tag_pose.pose.pose.position.y    = vec_tf_inv.y();//transform(1, 3);
-  tag_pose.pose.pose.position.z    = vec_tf_inv.z();//transform(2, 3);
-  tag_pose.pose.pose.orientation.x = rot_quaternion_tf.x();//rot_quaternion.x();
-  tag_pose.pose.pose.orientation.y = rot_quaternion_tf.y();//rot_quaternion.y();
-  tag_pose.pose.pose.orientation.z = rot_quaternion_tf.z();//rot_quaternion.z();
-  tag_pose.pose.pose.orientation.w = rot_quaternion_tf.w();//rot_quaternion.w();
   return tag_pose;
 }
 

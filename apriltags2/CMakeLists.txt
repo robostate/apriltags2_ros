@@ -11,6 +11,8 @@ catkin_package(
   CATKIN_DEPENDS
 )
 
+# add_compile_options(-pg)
+
 if(JETSON_CROSS_COMPILE)
   set(C11_COMP_FLAGS "-W -pipe -Ofast -mcpu=cortex-a57 -std=c++11")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C11_COMP_FLAGS}")

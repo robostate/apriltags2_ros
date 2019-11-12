@@ -78,6 +78,8 @@ catkin_package(
   DEPENDS Eigen OpenCV
 )
 
+# add_compile_options(-pg)
+
 ###########
 ## Build ##
 ###########
